@@ -9,9 +9,13 @@
     "anchor-config-gen": "./generate-config.js"
   },
   "scripts": {
-    "start": "node generate-config.js"
+    "start": "node generate-config.js",
+    "test": "node --test test/"
   },
   "dependencies": {
     "prompts": "^2.4.2"
+  },
+  "devDependencies": {
+    "js-yaml": "^5.2.3"
   }
 }

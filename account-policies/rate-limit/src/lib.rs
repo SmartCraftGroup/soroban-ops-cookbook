@@ -1,9 +1,9 @@
 //! A rolling-window rate-limit policy for Soroban smart accounts.
 //!
 //! Enforces: at most `max_count` transactions within any rolling window of
-//! `window_ledgers` ledger sequence numbers. Designed to be attached as a
-//! policy on an OpenZeppelin `stellar-accounts` smart account alongside
-//! spend-limit or contract-allowlist policies.
+//! `window_ledgers` ledger sequence numbers. Exposes a simple `check()` hook —
+//! this is a standalone reference implementation and does not yet implement
+//! OpenZeppelin `stellar-accounts`' `Policy` trait.
 //!
 //! The window is ledger-based (not wall-clock) because ledger sequence is
 //! the only monotonic timestamp available inside a Soroban contract.
@@ -67,9 +67,9 @@ impl RateLimitPolicy {
             .set(&DataKey::WindowLedgers, &window_ledgers);
     }
 
-    /// Policy entrypoint: record a call and enforce the rate limit.
+    /// Policy hook: record a call and enforce the rate limit.
     ///
-    /// Call this from the smart account's auth flow before allowing the
+    /// Call this from your smart account's auth flow before allowing the
     /// transaction to proceed. It records the current ledger sequence and
     /// panics if the number of calls within the window exceeds `max_count`.
     pub fn check(env: Env) {
@@ -159,7 +159,7 @@ impl RateLimitPolicy {
 #[cfg(test)]
 mod test {
     use super::*;
-    use soroban_sdk::testutils::{Address as _, Ledger};
+    use soroban_sdk::testutils::Address as _;
 
     #[test]
     fn allows_calls_within_limit() {
