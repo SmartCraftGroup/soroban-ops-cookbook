@@ -1,28 +1,29 @@
 services:
   anchor-platform:
     image: stellar/anchor-platform:latest
+    command: --sep-server --platform-server
     ports:
       - "8080:8080"   # SEP server
       - "8085:8085"   # Platform API
-      - "8082:8082"   # Observer/event API
-    environment:
-      - APP_LOGGING_LEVEL=INFO
-      - HOME_DOMAIN={{HOME_DOMAIN}}
-      - STELLAR_NETWORK={{NETWORK}}
-      - SEP_SERVER_ENABLED_SEPS={{ENABLED_SEPS}}
-      - ASSETS_VALUE={{ASSETS_JSON}}
-      - SEP10_SIGNING_SEED={{SEP10_SIGNING_SEED}}
+    volumes:
+      - ./config:/config
     env_file:
       - .env
     depends_on:
-      - db
-
+      db:
+        condition: service_healthy
+{{SEP24_UI_SERVICE}}
   db:
-    image: postgres:16
+    image: postgres:15.2-alpine
     environment:
-      - POSTGRES_DB=anchor_platform
-      - POSTGRES_USER=anchor
-      - POSTGRES_PASSWORD={{DB_PASSWORD}}
+      POSTGRES_USER: anchor
+      POSTGRES_PASSWORD: {{DB_PASSWORD}}
+      POSTGRES_DB: anchor_platform
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U anchor -d anchor_platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     volumes:
       - anchor_db_data:/var/lib/postgresql/data
 

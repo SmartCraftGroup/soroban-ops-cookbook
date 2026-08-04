@@ -11,9 +11,11 @@
 //!   CONTRACT_ID          the contract to watch
 //!   WEBHOOK_URL          where to POST events
 //!   POLL_INTERVAL_SECS   optional, defaults to 10
-//!   START_LEDGER         optional, defaults to 0
+//!   START_LEDGER         required. Soroban RPC rejects ledgers before its
+//!                        retention window, so a recent ledger must be set.
 //!   MAX_RETRIES          optional, defaults to 5
-//!   TOPIC_FILTER         optional, comma-separated topic prefixes to include
+//!   TOPIC_FILTER         optional, comma-separated substrings to match
+//!                        against event topic values
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -32,6 +34,14 @@ struct GetEventsResult {
     events: Vec<SorobanEvent>,
     #[serde(rename = "latestLedger")]
     latest_ledger: u64,
+    pagination: Option<EventsPagination>,
+}
+
+#[derive(Debug, Deserialize)]
+struct EventsPagination {
+    cursor: Option<String>,
+    #[serde(rename = "hasNext")]
+    has_next: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -59,23 +69,34 @@ struct WebhookPayload {
     delivered_at: String,
 }
 
-async fn fetch_events(
+/// Fetch a single page of events. `start_ledger` is only sent on the first
+/// page of a range; subsequent pages are requested by cursor.
+async fn fetch_events_page(
     client: &reqwest::Client,
     rpc_url: &str,
     contract_id: &str,
-    start_ledger: u64,
+    start_ledger: Option<u64>,
+    cursor: Option<&str>,
 ) -> Result<GetEventsResult> {
+    let mut params = json!({
+        "filters": [{
+            "type": "contract",
+            "contractIds": [contract_id]
+        }],
+        "pagination": {
+            "cursor": cursor,
+            "limit": 100
+        }
+    });
+    if let Some(start) = start_ledger {
+        params["startLedger"] = json!(start);
+    }
+
     let body = json!({
         "jsonrpc": "2.0",
         "id": 1,
         "method": "getEvents",
-        "params": {
-            "startLedger": start_ledger,
-            "filters": [{
-                "type": "contract",
-                "contractIds": [contract_id]
-            }]
-        }
+        "params": params
     });
 
     let resp: RpcResponse = client
@@ -93,6 +114,60 @@ async fn fetch_events(
     }
 
     resp.result.context("RPC response had no result")
+}
+
+/// Fetch all events in the range starting at `start_ledger`, following the
+/// RPC's pagination cursor until `hasNext` is false. Without this, ranges
+/// with more than one page of events (limit 100) would silently drop events.
+async fn fetch_events(
+    client: &reqwest::Client,
+    rpc_url: &str,
+    contract_id: &str,
+    start_ledger: u64,
+) -> Result<GetEventsResult> {
+    const MAX_PAGES: u32 = 100;
+
+    let mut events: Vec<SorobanEvent> = Vec::new();
+    let mut cursor: Option<String> = None;
+    let mut latest_ledger = start_ledger;
+    let mut pages: u32 = 0;
+
+    loop {
+        let start_arg = if cursor.is_none() {
+            Some(start_ledger)
+        } else {
+            None
+        };
+        let page = fetch_events_page(client, rpc_url, contract_id, start_arg, cursor.as_deref())
+            .await?;
+
+        latest_ledger = page.latest_ledger;
+        events.extend(page.events);
+
+        let pagination = page.pagination.unwrap_or(EventsPagination {
+            cursor: None,
+            has_next: false,
+        });
+        cursor = pagination.cursor;
+
+        if !pagination.has_next {
+            break;
+        }
+
+        pages += 1;
+        if pages >= MAX_PAGES {
+            anyhow::bail!(
+                "getEvents pagination exceeded {MAX_PAGES} pages for range starting at \
+                 {start_ledger}; refusing to loop forever"
+            );
+        }
+    }
+
+    Ok(GetEventsResult {
+        events,
+        latest_ledger,
+        pagination: None,
+    })
 }
 
 /// Send a single event to the webhook URL with exponential backoff.
@@ -210,10 +285,21 @@ async fn main() -> Result<()> {
         .build()
         .context("failed to build HTTP client")?;
 
+    // START_LEDGER is required: Soroban RPC only serves events within its
+    // retention window and rejects old ledgers, so a default of 0 would
+    // fail on the first fetch. There is no persisted cursor in this service
+    // (restarts re-deliver from START_LEDGER — dedupe on the receiving end
+    // via the X-Soroban-Event-Id header).
     let mut start_ledger: u64 = env::var("START_LEDGER")
         .ok()
         .and_then(|v| v.parse().ok())
-        .unwrap_or(0);
+        .filter(|ledger| *ledger >= 1)
+        .context(
+            "START_LEDGER is unset or < 1. Soroban RPC rejects ledgers older than its \
+             retention window, so set START_LEDGER to a recent ledger. Get one with: \
+             curl -X POST $SOROBAN_RPC_URL -H 'Content-Type: application/json' \
+             -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getLatestLedger\"}'",
+        )?;
 
     tracing::info!(
         %contract_id, %rpc_url, %webhook_url, start_ledger,

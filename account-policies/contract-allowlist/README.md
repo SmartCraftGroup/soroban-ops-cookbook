@@ -1,6 +1,12 @@
 # Contract Allowlist
 
-A contract-allowlist policy for Soroban smart accounts.
+A standalone contract-allowlist policy for Soroban smart accounts.
+
+Note: this is a self-contained reference implementation with a simple
+`check()` hook. It does **not** implement the `Policy` trait from
+OpenZeppelin's `stellar-accounts` yet — see
+[`../README.md`](../README.md#relationship-to-stellar-accounts) for how to
+wire it into a smart account.
 
 ## What it enforces
 
@@ -31,8 +37,10 @@ cargo test
 soroban contract build
 ```
 
-Then attach the built `.wasm` as a policy on your smart account per the
-[`stellar-accounts` docs](https://docs.openzeppelin.com/stellar-contracts).
+Deploy the built `.wasm` like any Soroban contract, then call `initialize(admin)`
+to set the admin and `allow_contract(addr, fns)` to build the allowlist.
+Call `check(...)` from your smart account's auth flow (or cross-contract from
+a signer) to enforce it.
 
 ## Tests
 

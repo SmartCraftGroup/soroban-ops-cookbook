@@ -2,8 +2,9 @@
 //!
 //! Enforces: the delegated signer may only invoke functions on a pre-approved set of
 //! contract addresses. Optionally, specific function names can be restricted
-//! per contract. Designed to be attached as a policy on an OpenZeppelin
-//! `stellar-accounts` smart account.
+//! per contract. Exposes a simple `check()` hook — this is a standalone
+//! reference implementation and does not yet implement OpenZeppelin
+//! `stellar-accounts`' `Policy` trait.
 //!
 //! Use case: a delegated signer should only be able to call your DEX contract's
 //! `swap` function and your vault's `deposit` function — nothing else.
@@ -109,8 +110,9 @@ impl ContractAllowlistPolicy {
             .remove(&DataKey::AllowedFunctions(contract_addr));
     }
 
-    /// Policy entrypoint: verify that `target_contract` and `function_name`
-    /// are on the allowlist. Panics (denying the tx) if not.
+    /// Policy hook: verify that `target_contract` and `function_name`
+    /// are on the allowlist. Panics (denying the tx) if not. Call this
+    /// from your smart account's auth flow or via cross-contract call.
     pub fn check(env: Env, target_contract: Address, function_name: Symbol) {
         let contracts: Vec<Address> = env
             .storage()

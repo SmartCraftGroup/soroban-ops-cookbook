@@ -1,9 +1,9 @@
 //! A minimal per-transaction spend-limit policy for Soroban smart accounts.
 //!
 //! Enforces: a single transaction may move at most `max_amount` of a given
-//! token. Designed to be attached as a policy on an OpenZeppelin
-//! `stellar-accounts` smart account so a delegated signer (or any automated workflow)
-//! can be scoped without holding the account's main key.
+//! token. Exposes a simple `check()` hook — this is a standalone reference
+//! implementation and does not yet implement OpenZeppelin `stellar-accounts`'
+//! `Policy` trait.
 //!
 //! This is intentionally simple — one limit, one token — so it's easy to
 //! read, audit, and compose with other policies (see `../rate-limit` for a
@@ -46,12 +46,13 @@ impl SpendLimitPolicy {
             .set(&DataKey::MaxAmount(token), &max_amount);
     }
 
-    /// Policy entrypoint: called by the smart account's auth flow before a
-    /// transfer is allowed. Returns without panicking if `amount` is within
-    /// the configured limit for `token`; panics (denying the tx) otherwise.
+    /// Policy hook: called before a transfer is allowed. Returns without
+    /// panicking if `amount` is within the configured limit for `token`;
+    /// panics (denying the tx) otherwise.
     ///
-    /// In a real `stellar-accounts` integration this maps to the `Policy`
-    /// trait's `enforce` hook — wire this function up as that hook.
+    /// When integrating with OpenZeppelin `stellar-accounts`, this maps to
+    /// the `Policy` trait's `enforce` hook — wire this function up as that
+    /// hook (see ../README.md#relationship-to-stellar-accounts).
     pub fn check(env: Env, token: Address, amount: i128) {
         let max_amount: i128 = env
             .storage()
