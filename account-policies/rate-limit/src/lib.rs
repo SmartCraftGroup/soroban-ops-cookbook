@@ -160,6 +160,13 @@ impl RateLimitPolicy {
 mod test {
     use super::*;
     use soroban_sdk::testutils::Address as _;
+    use soroban_sdk::testutils::Ledger as _;
+
+    fn advance_ledger(env: &Env, by: u32) {
+        let mut ledger = env.ledger().get();
+        ledger.sequence_number += by;
+        env.ledger().set(ledger);
+    }
 
     #[test]
     fn allows_calls_within_limit() {
@@ -176,10 +183,10 @@ mod test {
         // First three should succeed.
         client.check();
 
-        env.ledger().with_mut(|li| li.sequence_number += 1);
+        advance_ledger(&env, 1);
         client.check();
 
-        env.ledger().with_mut(|li| li.sequence_number += 1);
+        advance_ledger(&env, 1);
         client.check();
     }
 
@@ -197,9 +204,9 @@ mod test {
         client.initialize(&admin, &2u32, &100u32);
 
         client.check();
-        env.ledger().with_mut(|li| li.sequence_number += 1);
+        advance_ledger(&env, 1);
         client.check();
-        env.ledger().with_mut(|li| li.sequence_number += 1);
+        advance_ledger(&env, 1);
         // Third call should panic.
         client.check();
     }
@@ -217,11 +224,11 @@ mod test {
         client.initialize(&admin, &2u32, &10u32);
 
         client.check();
-        env.ledger().with_mut(|li| li.sequence_number += 1);
+        advance_ledger(&env, 1);
         client.check();
 
         // Jump forward past the window.
-        env.ledger().with_mut(|li| li.sequence_number += 20);
+        advance_ledger(&env, 20);
 
         // Should succeed — old calls fell out of the window.
         client.check();
@@ -243,12 +250,12 @@ mod test {
         client.check();
         assert_eq!(client.get_call_count(), 1);
 
-        env.ledger().with_mut(|li| li.sequence_number += 1);
+        advance_ledger(&env, 1);
         client.check();
         assert_eq!(client.get_call_count(), 2);
 
         // Jump past window.
-        env.ledger().with_mut(|li| li.sequence_number += 20);
+        advance_ledger(&env, 20);
         assert_eq!(client.get_call_count(), 0);
     }
 }
