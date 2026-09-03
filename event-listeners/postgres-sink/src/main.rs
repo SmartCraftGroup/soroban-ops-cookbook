@@ -183,8 +183,8 @@ async fn fetch_events(
         } else {
             None
         };
-        let page = fetch_events_page(client, rpc_url, contract_id, start_arg, cursor.as_deref())
-            .await?;
+        let page =
+            fetch_events_page(client, rpc_url, contract_id, start_arg, cursor.as_deref()).await?;
 
         latest_ledger = page.latest_ledger;
         events.extend(page.events);
@@ -337,15 +337,13 @@ async fn main() -> Result<()> {
         }
         None => {
             let initial: Option<u64> = env::var("START_LEDGER").ok().and_then(|v| v.parse().ok());
-            let initial = initial
-                .filter(|ledger| *ledger >= 1)
-                .context(
-                    "no persisted cursor and START_LEDGER is unset or < 1. \
+            let initial = initial.filter(|ledger| *ledger >= 1).context(
+                "no persisted cursor and START_LEDGER is unset or < 1. \
                      Soroban RPC rejects ledgers older than its retention window, so \
                      set START_LEDGER to a recent ledger. Get one with: \
                      curl -X POST $SOROBAN_RPC_URL -H 'Content-Type: application/json' \
                      -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getLatestLedger\"}'",
-                )?;
+            )?;
             tracing::info!(initial, "no persisted cursor, starting from START_LEDGER");
             initial
         }

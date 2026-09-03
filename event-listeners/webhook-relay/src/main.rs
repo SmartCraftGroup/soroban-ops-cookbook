@@ -138,8 +138,8 @@ async fn fetch_events(
         } else {
             None
         };
-        let page = fetch_events_page(client, rpc_url, contract_id, start_arg, cursor.as_deref())
-            .await?;
+        let page =
+            fetch_events_page(client, rpc_url, contract_id, start_arg, cursor.as_deref()).await?;
 
         latest_ledger = page.latest_ledger;
         events.extend(page.events);
