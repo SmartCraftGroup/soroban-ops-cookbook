@@ -129,6 +129,7 @@ async fn fetch_events(
 
     let mut events: Vec<SorobanEvent> = Vec::new();
     let mut cursor: Option<String> = None;
+    #[allow(unused_assignments)]
     let mut latest_ledger = start_ledger;
     let mut pages: u32 = 0;
 
