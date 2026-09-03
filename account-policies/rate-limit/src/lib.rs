@@ -9,7 +9,7 @@
 //! the only monotonic timestamp available inside a Soroban contract.
 
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Symbol, Vec};
+use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, Address, Env, Symbol, Vec};
 
 #[contracttype]
 #[derive(Clone)]
@@ -152,7 +152,7 @@ impl RateLimitPolicy {
     }
 
     pub fn policy_name(_env: Env) -> Symbol {
-        Symbol::short("rate_lim")
+        symbol_short!("rate_lim")
     }
 }
 

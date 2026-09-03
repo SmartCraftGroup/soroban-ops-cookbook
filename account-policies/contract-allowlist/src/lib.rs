@@ -10,7 +10,7 @@
 //! `swap` function and your vault's `deposit` function — nothing else.
 
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Symbol, Vec};
+use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, Address, Env, Symbol, Vec};
 
 #[contracttype]
 #[derive(Clone)]
@@ -183,7 +183,7 @@ impl ContractAllowlistPolicy {
     }
 
     pub fn policy_name(_env: Env) -> Symbol {
-        Symbol::short("allow_ls")
+        symbol_short!("allow_ls")
     }
 }
 
@@ -209,8 +209,8 @@ mod test {
         client.allow_contract(&target, &empty_fns);
 
         // Any function name should be allowed.
-        client.check(&target, &Symbol::short("swap"));
-        client.check(&target, &Symbol::short("deposit"));
+        client.check(&target, &symbol_short!("swap"));
+        client.check(&target, &symbol_short!("deposit"));
     }
 
     #[test]
@@ -227,7 +227,7 @@ mod test {
         client.initialize(&admin);
 
         // Don't add target to allowlist — should panic.
-        client.check(&target, &Symbol::short("swap"));
+        client.check(&target, &symbol_short!("swap"));
     }
 
     #[test]
@@ -244,10 +244,10 @@ mod test {
 
         // Allow only "swap" on this contract.
         let mut fns: Vec<Symbol> = Vec::new(&env);
-        fns.push_back(Symbol::short("swap"));
+        fns.push_back(symbol_short!("swap"));
         client.allow_contract(&target, &fns);
 
-        client.check(&target, &Symbol::short("swap"));
+        client.check(&target, &symbol_short!("swap"));
     }
 
     #[test]
@@ -265,10 +265,10 @@ mod test {
 
         // Allow only "swap", then try "withdraw".
         let mut fns: Vec<Symbol> = Vec::new(&env);
-        fns.push_back(Symbol::short("swap"));
+        fns.push_back(symbol_short!("swap"));
         client.allow_contract(&target, &fns);
 
-        client.check(&target, &Symbol::short("withdraw"));
+        client.check(&target, &symbol_short!("withdraw"));
     }
 
     #[test]
