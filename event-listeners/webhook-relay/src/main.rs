@@ -129,6 +129,7 @@ async fn fetch_events(
 
     let mut events: Vec<SorobanEvent> = Vec::new();
     let mut cursor: Option<String> = None;
+    #[allow(unused_assignments)]
     let mut latest_ledger = start_ledger;
     let mut pages: u32 = 0;
 
@@ -138,8 +139,8 @@ async fn fetch_events(
         } else {
             None
         };
-        let page = fetch_events_page(client, rpc_url, contract_id, start_arg, cursor.as_deref())
-            .await?;
+        let page =
+            fetch_events_page(client, rpc_url, contract_id, start_arg, cursor.as_deref()).await?;
 
         latest_ledger = page.latest_ledger;
         events.extend(page.events);

@@ -10,7 +10,7 @@
 //! time-windowed complement).
 
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Symbol};
+use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, Address, Env, Symbol};
 
 #[contracttype]
 #[derive(Clone)]
@@ -73,7 +73,7 @@ impl SpendLimitPolicy {
     }
 
     pub fn policy_name(_env: Env) -> Symbol {
-        Symbol::short("spend_lim")
+        symbol_short!("spend_lim")
     }
 }
 
